@@ -88,6 +88,22 @@ router.get('/customer/:accountid/fixed-deposit', function (req, res) {
   })
 })
 
+router.get('/customer/:accountid/accounts', function (req, res) {
+
+  req.app.locals.db.collection('accounts').find({ accounts_id: req.params.accountid }).toArray((err, result) => {
+
+    if (err) {
+      res.status(400).send({ 'error': err })
+    }
+    if (result === undefined || result.length === 0) {
+      res.status(400).send({ 'error': 'No User in database' })
+    } else {
+      res.status(200).send(result)
+    }
+  })
+})
+
+
 router.get('/fixed-deposit', function (req, res) {
 
   req.app.locals.db.collection('fixedDeposit').find().toArray((err, result) => {
