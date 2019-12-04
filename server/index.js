@@ -15,7 +15,8 @@ const options = {
   reconnectInterval: 1000,
   useUnifiedTopology: true
 }
-const routes = require('./routes/routes.js')
+const routes = require('./routes/routes.js');
+const tibco = require('./routes/tibco.js');
 const port = process.env.PORT || 9000
 const app = express()
 const http = require('http').Server(app)
@@ -27,7 +28,7 @@ app.use(bodyParser.urlencoded({extended: true}))
 app.use(cors());
 //app.use(require('./auth'));
 app.use('/api', routes)
-app.use('/sql', routes)
+app.use('/v1', tibco)
 app.use('/uploads', express.static('uploads'));
 
 app.use((req, res) => {
