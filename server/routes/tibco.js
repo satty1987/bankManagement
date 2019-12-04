@@ -22,7 +22,7 @@ tibco.get('/search', async (req, res, next) => {
     const requestDb = req.app.locals.db.collection("cegoogler");
     let response;
     try {
-        response = await requestDb.find({ title: { $regex: new RegExp('^' + req.query.keyword) } }).toArray();
+        response = await requestDb.find({ title: { $regex: new RegExp('^' + req.query.keyword.toUpperCase()) } }).toArray();
         if (response === undefined || response.length === 0) {
             res.status(400).send({ 'error': 'No Result found in database' })
         } else {
