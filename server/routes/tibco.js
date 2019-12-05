@@ -2,7 +2,6 @@ const express = require('express')
 const tibco = express.Router();
 const _ = require('lodash');
 
-
 var ObjectID = require('mongodb').ObjectID;
 
 tibco.get('/getsolution', (req, res, next) => {
@@ -18,6 +17,19 @@ tibco.get('/getsolution', (req, res, next) => {
         }
     })
 })
+
+tibco.delete('/getsolution/:id', (req, res, next) => {
+    const requestDb = req.app.locals.db.collection("cegoogler");
+    requestDb.deleteOne({
+        '_id': ObjectID(req.params.id)
+    }, (err, result) => {
+        if (err) {
+            res.status(400).send({ 'error': err })
+        }
+        res.status(200).send(result)
+    })
+})
+
 tibco.get('/search', async (req, res, next) => {
     const requestDb = req.app.locals.db.collection("cegoogler");
     let response;
