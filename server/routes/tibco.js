@@ -52,7 +52,7 @@ tibco.post("/getsolution", (req, res) => {
     const body = {
         'title': req.body.title,
         'error_decription': req.body.error_decription,
-        'solution': req.body.error_decription
+        'solution': req.body.solution
     };
     requestDb.insertOne(body, (err, result) => {
         if (err) {
