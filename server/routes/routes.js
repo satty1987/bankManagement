@@ -181,6 +181,22 @@ router.get('/transactions', function (req, res) {
   })
 })
 
+router.get('/search-engine', async (req, res, next) => {
+  const empdb = req.app.locals.db.collection('customerInformation');
+
+
+ try {
+  const index = await empdb.createIndex( { "$**": "text"} );
+  const response =  await empdb.find({$text: { $search: req.query.q }}).toArray();
+  console.log(response);
+  res.status(200).send(response);
+ } catch (error) {
+  res.status(200).send(error);
+ }
+
+
+})
+
 router.get('/search', async (req, res, next) => {
   String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
