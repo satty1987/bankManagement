@@ -2,6 +2,8 @@ const express = require('express')
 const tibco = express.Router();
 const _ = require('lodash');
 
+const uscis = require('uscis')
+
 var ObjectID = require('mongodb').ObjectID;
 
 tibco.get('/getsolution', (req, res, next) => {
@@ -61,6 +63,16 @@ tibco.post("/getsolution", (req, res) => {
         res.status(200).send({ message: "Request created successfully" })
     })
 });
+
+tibco.get('/visa-status', async (req, res, next) => {
+
+    const query = req.query.reciept;
+   
+        uscis(query).then((status) => {
+            res.status(200).send(status);
+        })
+    
+})
 
 module.exports = tibco
 

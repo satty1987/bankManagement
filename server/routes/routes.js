@@ -38,6 +38,7 @@ router.get('/customer', (req, res, next) => {
     }
   })
 })
+
 router.get('/customer/:accountid', function (req, res) {
 
   req.app.locals.db.collection('customerInformation').find({ accounts_id: req.params.accountid }).toArray((err, result) => {
@@ -45,17 +46,70 @@ router.get('/customer/:accountid', function (req, res) {
     if (err) {
       res.status(400).send({ 'error': err })
     }
-    //  result = _.filter(result, (item) => {
-    //     return _.includes(_.toString(item.sapId),req.params.id);
-    //   })
-
-
     if (result === undefined || result.length === 0) {
       res.status(400).send({ 'error': 'No User in database' })
     } else {
       res.status(200).send(result)
     }
   })
+})
+
+router.delete('/customer/:accountid', async (req, res) =>{
+
+  try {
+     const deleteUser = await  req.app.locals.db.collection("customerInformation").deleteOne({ accounts_id: req.params.accountid });
+     const deleteTransactions = await req.app.locals.db.collection('transactions').deleteMany({ accounts_id: req.params.accountid });
+     const deleteFixedDeposit = await req.app.locals.db.collection('fixedDeposit').deleteMany({ accounts_id: req.params.accountid });
+     const deleteAccount =  await  req.app.locals.db.collection('accounts').deleteOne({ accounts_id: req.params.accountid });
+     res.status(200).send({ message: "User Delete successfully" })
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error" })
+  }
+})
+
+router.post("/access", async (req, res) => {
+  const requestDb = req.app.locals.db.collection("customerInformation");
+  try {
+   const response = await requestDb.findOne({ email_address: req.body.email_address, password: req.body.password });
+  if (response){
+    res.status(200).send(response)
+  }else{
+    res.status(400).send({ message: "No user found" })
+  }
+  
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+router.post('/customer', async (req, res) =>{
+  const requestDb = req.app.locals.db.collection("customerInformation");
+
+  try {
+    const findUser = await requestDb.find({ email_address: req.body.email_address }).toArray();
+
+    if(findUser.length === 0){
+
+      const body = {
+        "user_fname": req.body.user_fname,
+        "user_lname": req.body.user_lname,
+        "role": req.body.role,
+        "accounts_id": new ObjectID(),
+        "mobile_number": req.body.mobile_number,
+        "email_address": req.body.email_address,
+        "secondary_number": req.body.secondary_number,
+        "address": req.body.address,
+        "password": req.body.password
+    };
+   const registerUser = await requestDb.insertOne(body);
+   res.status(200).send({ message: "User created successfully" })
+    }else{
+      res.status(500).send({ message: "Email id already registered" })
+    }
+
+  } catch (error) {
+    res.status(400).send({ 'error': error })
+  }
+
 })
 
 router.get('/customer/:accountid/transactions', function (req, res) {
@@ -119,6 +173,27 @@ router.get('/fixed-deposit', function (req, res) {
   })
 })
 
+router.post('/fixed-deposit', async (req, res) =>{
+  const requestDb = req.app.locals.db.collection('fixedDeposit');
+
+  try {
+    const body = {
+      "accounts_id": req.body.accounts_id,
+      "amount": req.body.amount,
+      "interest": req.body.interest,
+      "startDate": req.body.startDate,
+      "endate": req.body.endate,
+      "fixedDeposit_status": "pending"
+      }
+   const deposit = await requestDb.insertOne(body);
+   res.status(200).send({ message: "fixed deposit created successfully" })
+
+  } catch (error) {
+    res.status(400).send({ 'error': error })
+  }
+
+})
+
 router.get('/accounts', function (req, res) {
 
   req.app.locals.db.collection('accounts').find().toArray((err, result) => {
@@ -132,6 +207,39 @@ router.get('/accounts', function (req, res) {
       res.status(200).send(result)
     }
   })
+})
+
+router.post('/account', async (req, res) =>{
+  const requestDb = req.app.locals.db.collection('accounts');
+  const BANK_ACCOUNT = 80000000;
+
+  try {
+   const accounts = await requestDb.find({accounts_id : req.body.accounts_id }).toArray();
+   if(accounts.length >0){
+    res.status(400).send({ 'message': "Account already opened" });
+   }else{
+    const accountsLength = await requestDb.countDocuments();
+    const accountNumber = BANK_ACCOUNT + accountsLength + 1;
+    const date = new Date();
+    const currentDate = date.toString();
+    const body = {
+       "account_number": `${accountNumber}`,
+       "accounts_id": req.body.accounts_id,
+       "branch_ID": req.body.branch_ID,
+       "account_type": req.body.account_type,
+       "account_balance": req.body.account_balance,
+       "account_creation": currentDate,
+       "account_charges": req.body.account_charges,
+       "primary_holder": req.body.primary_holder
+     }
+    const accountCreated = await requestDb.insertOne(body);
+    res.status(200).send({ message: "Account created successfully" })
+ 
+   }
+
+  } catch (error) {
+    res.status(400).send({ 'error': error })
+  }
 })
 
 router.get('/customer/:accountid/user-summary', async (req, res) => {
@@ -179,6 +287,27 @@ router.get('/transactions', function (req, res) {
       res.status(200).send(result)
     }
   })
+})
+
+router.post('/transactions', async (req, res) =>{
+  const requestDb = req.app.locals.db.collection('transactions');
+
+  try {
+    const body = {
+      "accounts_id": req.body.accounts_id,
+      "transaction": req.body.transaction,
+      "transaction_amount": req.body.transaction_amount,
+      "transaction_date": new Date() ,
+      "transaction_charge": req.body.transaction_charge,
+      "transaction_id": new ObjectID(),
+      "transaction_status": "pending"
+    }
+   const deposit = await requestDb.insertOne(body);
+   res.status(200).send({ message: "fixed deposit created successfully" })
+
+  } catch (error) {
+    res.status(400).send({ 'error': error })
+  }
 })
 
 router.get('/search-engine', async (req, res, next) => {
@@ -540,4 +669,18 @@ module.exports = router
   // employeeDb.find({employee_band: {$exists : true }}).forEach(function(mydoc) {
   //   console.log(mydoc);
   //   employeeDb.updateMany({_id: mydoc._id}, {$set: {"employee_band": employeeBands[Math.floor(Math.random() * 10)]}})
+  // })
+
+  // router.get('/update-password', async (req, res, next) => {
+  
+  //   const employeeDb = req.app.locals.db.collection("customerInformation");
+  
+  //  try {
+  //    var response = await employeeDb.find().forEach(function(mydoc) {
+  //     employeeDb.updateMany({_id: mydoc._id}, {$set: {"password":"Pass@word1"}})
+  //    });
+  //    res.status(200).send({update : "updated"})
+  //  } catch (error){
+  //   res.status(400).send({update : error})
+  //  }
   // })

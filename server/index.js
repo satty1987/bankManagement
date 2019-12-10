@@ -27,10 +27,13 @@ app.use(bodyParser.urlencoded({extended: true}))
 
 app.use(cors());
 //app.use(require('./auth'));
+
 app.use('/api', routes)
 app.use('/v1', tibco)
 app.use('/uploads', express.static('uploads'));
-
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 app.use((req, res) => {
   res.status(404).send({ message: 'Route'+req.url+' Not found.' });
 })

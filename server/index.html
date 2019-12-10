@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Visa Status</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous" />
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row " id="result">
+            <div class="col-md-6 offset-md-3 ">
+                <form class="card p-5  mt-5" id="form">
+                    <div class="form-group">
+                        <label for="reciept">Reciept Number</label>
+                        <input type="text" class="form-control" id="reciept" value="wac1918751126" />
+                    </div>
+                    <div class="form-group">
+                        <label for="nearby">Near by</label>
+                        <input type="number" class="form-control" id="nearby" />
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="getData()">
+                        Submit
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+    <script>
+        const classes = {
+            'ResponseToUSCISRequestForEvidenceWasReceived' : ' bg-primary text-white',
+            'RequestforAdditionalEvidenceWasSent':'bg-warning',
+            'CaseWasApproved': 'bg-success text-white',
+            'CaseWasApprovedAndMyDecisionWasEmailed' : 'bg-success text-white',
+            'CaseWasDenied': 'bg-danger text-white'
+}
+        function getData() {
+            var reciept = document.getElementById("reciept").value;
+            var nearBy = document.getElementById("nearby").value || 1;
+
+            if (reciept == "" && nearBy == "") {
+                alert("Fill the form completly");
+            } else {
+                for (var i = 0; i < parseInt(nearBy); i++) {
+
+                    var num = reciept.split(/(\d+)/);
+
+                    var updateno = parseInt(num[1]) + i;
+                    ;
+                    apicall(num[0] + updateno);
+
+                }
+
+
+            }
+        }
+
+        async function apicall(reciept) {
+            try {
+                const response = await fetch("v1/visa-status?reciept=" + reciept);
+                console.log(response);
+                const result = await response.json();
+
+                if (result.title != '' && result.details != '') {
+                    const classname = classes[result.title.replace(/[^A-Z0-9]/ig, "")] ? classes[result.title.replace(/[^A-Z0-9]/ig, "")] : 'bg-light';
+                    const template = `
+                    
+                <div class="card  ${classname} col-md-4 mb-4 p-0" >
+                    <div class="card-header text-uppercase">Reciept : ${reciept}</div>
+                <div class="card-body">
+                <h5 class="card-title">${result.title}</h5>
+                <p class="card-text">${result.details}</p>
+</div>
+               
+                </div>
+            `;
+
+                    document.getElementById("result").innerHTML += template;
+                    document.getElementById("form").style.display = 'none'
+                }
+
+
+
+            } catch (error) {
+                console.log(error);
+            }
+        }
+    </script>
+</body>
+
+</html>
