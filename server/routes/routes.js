@@ -6,7 +6,76 @@ const _ = require('lodash');
 var cron = require('node-cron');
 const multer = require('multer');
 
+
 var ObjectID = require('mongodb').ObjectID;
+cron.schedule('* * * * *', async() => {
+
+});
+
+async function transactionScheduler(req,res){
+  const account = req.app.locals.db.collection("accounts");
+  const transaction = req.app.locals.db.collection('transactions')
+  const response = await transaction.find().toArray();
+
+response.forEach( async (value,key)=>{
+
+  if(value.transaction === "debit" && value.transaction_status ==='pending'){
+try {
+  const accountTransaction = await account.updateOne({ 'accounts_id': value.accounts_id},{ $inc: { account_balance : -value.transaction_amount}},{upsert: true});
+
+  const updateTransaction = await transaction.updateOne({transaction_id : value.transaction_id },{$set : {transaction_status: "success"}}, { upsert: true })
+  
+console.log('update')
+} catch (error) {
+  
+}
+  }
+  if(value.transaction === "credit" && value.transaction_status ==='pending'){
+    try {
+      const accountTransaction = await account.updateOne({ 'accounts_id': value.accounts_id},{ $inc: { account_balance : value.transaction_amount}},{upsert: true});
+    
+      const updateTransaction = await transaction.updateOne({transaction_id : value.transaction_id },{$set : {transaction_status: "success"}}, { upsert: true })
+      
+    console.log('update')
+    } catch (error) {
+      
+    }
+  }
+
+})
+
+
+}
+
+
+router.get("/scheduler", (req, res) => {
+
+  transactionScheduler(req,res);
+
+  res.send('done')
+  
+});
+
+router.get("/account-update/:accountid", async (req, res) => {
+
+  const account = req.app.locals.db.collection("accounts");
+  
+try {
+//   const response = await account.findOneAndUpdate(
+//     { 'accounts_id': req.params.accountid },
+//     { $set: { account_balance: 100 } ,upsert:true, returnNewDocument : true}
+//{ $set: { "parkingAvail": 'true' } }, { upsert: true }
+// );
+const response  = await account.updateOne( { 'accounts_id': req.params.accountid},{ $set: { "account_balance": 100 }},{ upsert: true })
+
+const responses  = await account.findOne({ 'accounts_id': req.params.accountid});
+console.log(responses);
+  res.status(200).send(responses)
+} catch (error) {
+  res.status(400).send({ 'error': error })
+}
+  
+});
 
 router.get('/branches', (req, res, next) => {
   var mysort = { branch_code: 1 };
@@ -54,14 +123,14 @@ router.get('/customer/:accountid', function (req, res) {
   })
 })
 
-router.delete('/customer/:accountid', async (req, res) =>{
+router.delete('/customer/:accountid', async (req, res) => {
 
   try {
-     const deleteUser = await  req.app.locals.db.collection("customerInformation").deleteOne({ accounts_id: req.params.accountid });
-     const deleteTransactions = await req.app.locals.db.collection('transactions').deleteMany({ accounts_id: req.params.accountid });
-     const deleteFixedDeposit = await req.app.locals.db.collection('fixedDeposit').deleteMany({ accounts_id: req.params.accountid });
-     const deleteAccount =  await  req.app.locals.db.collection('accounts').deleteOne({ accounts_id: req.params.accountid });
-     res.status(200).send({ message: "User Delete successfully" })
+    const deleteUser = await req.app.locals.db.collection("customerInformation").deleteOne({ accounts_id: req.params.accountid });
+    const deleteTransactions = await req.app.locals.db.collection('transactions').deleteMany({ accounts_id: req.params.accountid });
+    const deleteFixedDeposit = await req.app.locals.db.collection('fixedDeposit').deleteMany({ accounts_id: req.params.accountid });
+    const deleteAccount = await req.app.locals.db.collection('accounts').deleteOne({ accounts_id: req.params.accountid });
+    res.status(200).send({ message: "User Delete successfully" })
   } catch (error) {
     res.status(500).send({ message: "Internal Server Error" })
   }
@@ -70,39 +139,39 @@ router.delete('/customer/:accountid', async (req, res) =>{
 router.post("/access", async (req, res) => {
   const requestDb = req.app.locals.db.collection("customerInformation");
   try {
-   const response = await requestDb.findOne({ email_address: req.body.email_address, password: req.body.password });
-  if (response){
-    res.status(200).send(response)
-  }else{
-    res.status(400).send({ message: "No user found" })
-  }
-  
+    const response = await requestDb.findOne({ email_address: req.body.email_address, password: req.body.password });
+    if (response) {
+      res.status(200).send(response)
+    } else {
+      res.status(400).send({ message: "No user found" })
+    }
   } catch (error) {
     res.status(400).send(error);
   }
 });
-router.post('/customer', async (req, res) =>{
+router.post('/customer', async (req, res) => {
   const requestDb = req.app.locals.db.collection("customerInformation");
 
   try {
     const findUser = await requestDb.find({ email_address: req.body.email_address }).toArray();
 
-    if(findUser.length === 0){
+    if (findUser.length === 0) {
 
+      const account = new ObjectID();
       const body = {
         "user_fname": req.body.user_fname,
         "user_lname": req.body.user_lname,
         "role": req.body.role,
-        "accounts_id": new ObjectID(),
+        "accounts_id": account.toHexString(),
         "mobile_number": req.body.mobile_number,
         "email_address": req.body.email_address,
         "secondary_number": req.body.secondary_number,
         "address": req.body.address,
         "password": req.body.password
-    };
-   const registerUser = await requestDb.insertOne(body);
-   res.status(200).send({ message: "User created successfully" })
-    }else{
+      };
+      const registerUser = await requestDb.insertOne(body);
+      res.status(200).send({ message: "User created successfully" })
+    } else {
       res.status(500).send({ message: "Email id already registered" })
     }
 
@@ -173,7 +242,7 @@ router.get('/fixed-deposit', function (req, res) {
   })
 })
 
-router.post('/fixed-deposit', async (req, res) =>{
+router.post('/fixed-deposit', async (req, res) => {
   const requestDb = req.app.locals.db.collection('fixedDeposit');
 
   try {
@@ -184,9 +253,9 @@ router.post('/fixed-deposit', async (req, res) =>{
       "startDate": req.body.startDate,
       "endate": req.body.endate,
       "fixedDeposit_status": "pending"
-      }
-   const deposit = await requestDb.insertOne(body);
-   res.status(200).send({ message: "fixed deposit created successfully" })
+    }
+    const deposit = await requestDb.insertOne(body);
+    res.status(200).send({ message: "fixed deposit created successfully" })
 
   } catch (error) {
     res.status(400).send({ 'error': error })
@@ -195,9 +264,7 @@ router.post('/fixed-deposit', async (req, res) =>{
 })
 
 router.get('/accounts', function (req, res) {
-
   req.app.locals.db.collection('accounts').find().toArray((err, result) => {
-
     if (err) {
       res.status(400).send({ 'error': err })
     }
@@ -209,68 +276,72 @@ router.get('/accounts', function (req, res) {
   })
 })
 
-router.post('/account', async (req, res) =>{
+router.post('/account', async (req, res) => {
   const requestDb = req.app.locals.db.collection('accounts');
   const BANK_ACCOUNT = 80000000;
-
   try {
-   const accounts = await requestDb.find({accounts_id : req.body.accounts_id }).toArray();
-   if(accounts.length >0){
-    res.status(400).send({ 'message': "Account already opened" });
-   }else{
-    const accountsLength = await requestDb.countDocuments();
-    const accountNumber = BANK_ACCOUNT + accountsLength + 1;
-    const date = new Date();
-    const currentDate = date.toString();
-    const body = {
-       "account_number": `${accountNumber}`,
-       "accounts_id": req.body.accounts_id,
-       "branch_ID": req.body.branch_ID,
-       "account_type": req.body.account_type,
-       "account_balance": req.body.account_balance,
-       "account_creation": currentDate,
-       "account_charges": req.body.account_charges,
-       "primary_holder": req.body.primary_holder
-     }
-    const accountCreated = await requestDb.insertOne(body);
-    res.status(200).send({ message: "Account created successfully" })
- 
-   }
+    const accounts = await requestDb.find({ accounts_id: req.body.accounts_id }).toArray();
+    if (accounts.length > 0) {
+      res.status(400).send({ 'message': "Account already opened" });
+    } else {
+      const accountsLength = await requestDb.countDocuments();
+      const accountNumber = BANK_ACCOUNT + accountsLength + 1;
+      const date = new Date();
+      const currentDate = date.toString();
+      const body = {
+        "account_number": `${accountNumber}`,
+        "accounts_id": req.body.accounts_id,
+        "branch_ID": req.body.branch_ID,
+        "account_type": req.body.account_type,
+        "account_balance": req.body.account_balance,
+        "account_creation": currentDate,
+        "account_charges": req.body.account_charges,
+        "primary_holder": req.body.primary_holder
+      }
+      const accountCreated = await requestDb.insertOne(body);
+      res.status(200).send({ message: "Account created successfully" })
 
+    }
   } catch (error) {
     res.status(400).send({ 'error': error })
   }
 })
 
 router.get('/customer/:accountid/user-summary', async (req, res) => {
+  const account = req.app.locals.db.collection('customerInformation');
+try {
+  const response  = await account.aggregate([
+  { "$match": { "accounts_id": req.params.accountid} },
+  {
+    $lookup: {
+            from: "accounts",
+            localField: "accounts_id",
+            foreignField: "accounts_id",
+            as: "account"
+        }
+},
+{
+  $lookup: {
+          from: "transactions",
+          localField: "accounts_id",
+          foreignField: "accounts_id",
+          as: "transactions"
+      }
+},
+{
+  $lookup: {
+          from: "fixedDeposit",
+          localField: "accounts_id",
+          foreignField: "accounts_id",
+          as: "fixedDeposit"
+      }
+}
+]).toArray();
 
-  try {
-
-    const account = req.app.locals.db.collection('accounts');
-
-    const accountInfo = await account.find({ accounts_id: req.params.accountid }).toArray();
-
-    const fd = await req.app.locals.db.collection('fixedDeposit').find({ accounts_id: req.params.accountid }).toArray();
-
-    const transactions = await req.app.locals.db.collection('transactions').find({ accounts_id: req.params.accountid }).toArray();
-    const custInfo = await req.app.locals.db.collection('customerInformation').find({ accounts_id: req.params.accountid }).toArray();
-  
-     const response = {
-      accountInfo: accountInfo,
-      fixedDeposit : fd,
-      transactions : transactions,
-      customer : custInfo
-     }
-     if (response) {
-      res.status(200).send(response);
-    
-    } else {
-      res.status(400).send({ 'error': 'No User in database' })
-    }
-
-  } catch (error) {
-    res.status(400).send({ 'error': error })
-  }
+res.status(200).send(response);
+} catch (error) {
+  res.status(400).send({ 'error': error })
+}
 
 })
 
@@ -289,7 +360,7 @@ router.get('/transactions', function (req, res) {
   })
 })
 
-router.post('/transactions', async (req, res) =>{
+router.post('/transactions', async (req, res) => {
   const requestDb = req.app.locals.db.collection('transactions');
 
   try {
@@ -297,13 +368,13 @@ router.post('/transactions', async (req, res) =>{
       "accounts_id": req.body.accounts_id,
       "transaction": req.body.transaction,
       "transaction_amount": req.body.transaction_amount,
-      "transaction_date": new Date() ,
+      "transaction_date": new Date(),
       "transaction_charge": req.body.transaction_charge,
       "transaction_id": new ObjectID(),
       "transaction_status": "pending"
     }
-   const deposit = await requestDb.insertOne(body);
-   res.status(200).send({ message: "fixed deposit created successfully" })
+    const deposit = await requestDb.insertOne(body);
+    res.status(200).send({ message: "fixed deposit created successfully" })
 
   } catch (error) {
     res.status(400).send({ 'error': error })
@@ -312,28 +383,25 @@ router.post('/transactions', async (req, res) =>{
 
 router.get('/search-engine', async (req, res, next) => {
   const empdb = req.app.locals.db.collection('customerInformation');
-
-
- try {
-  const index = await empdb.createIndex( { "$**": "text"} );
-  const response =  await empdb.find({$text: { $search: req.query.q }}).toArray();
-  console.log(response);
-  res.status(200).send(response);
- } catch (error) {
-  res.status(200).send(error);
- }
-
+  try {
+    const index = await empdb.createIndex({ "$**": "text" });
+    const response = await empdb.find({ $text: { $search: req.query.q } }).toArray();
+    console.log(response);
+    res.status(200).send(response);
+  } catch (error) {
+    res.status(200).send(error);
+  }
 
 })
 
 router.get('/search', async (req, res, next) => {
-  String.prototype.capitalize = function() {
+  String.prototype.capitalize = function () {
     return this.charAt(0).toUpperCase() + this.slice(1);
-}
-  const query = Object.keys(req.query )[0];
+  }
+  const query = Object.keys(req.query)[0];
   const customerInformation = req.app.locals.db.collection('accounts');
   const empdb = req.app.locals.db.collection('customerInformation');
-  
+
   let response = '';
   switch (query) {
     case 'accounts_id':
@@ -343,30 +411,21 @@ router.get('/search', async (req, res, next) => {
       response = await customerInformation.find({ primary_holder: { $regex: new RegExp('^' + req.query.name.capitalize()) } }).toArray();
       break;
     case 'account_number':
-
-
-      response = await customerInformation .find({ account_number: { $regex: new RegExp('^'+req.query.account_number) } }).toArray();
-
-     // response = await customerInformation.find({ accounts_id: account_response.accounts_id }).toArray();
-
+      response = await customerInformation.find({ account_number: { $regex: new RegExp('^' + req.query.account_number) } }).toArray();
       break;
     default:
       break;
   }
-  
-
 
   if (response === undefined || response.length === 0) {
-        res.status(400).send({ 'error': 'No User  in database' })
-      } else {
-        for (let index = 0; index < response.length; index++) {
-          const emp =  await empdb.find({ accounts_id: response[index].accounts_id }).toArray();
-            response[index].customerInfo = emp;
-          }
-        res.status(200).send(response);
-      }
-    
-
+    res.status(400).send({ 'error': 'No User  in database' })
+  } else {
+    for (let index = 0; index < response.length; index++) {
+      const emp = await empdb.find({ accounts_id: response[index].accounts_id }).toArray();
+      response[index].customerInfo = emp;
+    }
+    res.status(200).send(response);
+  }
 })
 
 
@@ -672,9 +731,9 @@ module.exports = router
   // })
 
   // router.get('/update-password', async (req, res, next) => {
-  
+
   //   const employeeDb = req.app.locals.db.collection("customerInformation");
-  
+
   //  try {
   //    var response = await employeeDb.find().forEach(function(mydoc) {
   //     employeeDb.updateMany({_id: mydoc._id}, {$set: {"password":"Pass@word1"}})
