@@ -323,13 +323,20 @@ router.get('/customer/:accountid/user-summary', async (req, res) => {
           foreignField: "accounts_id",
           as: "transactions"
         }
-      },
-      {
+      },{
         $lookup: {
           from: "fixedDeposit",
           localField: "accounts_id",
           foreignField: "accounts_id",
           as: "fixedDeposit"
+        }
+      },
+      {
+        $lookup: {
+          from: "fundsTransfer",
+          localField: "accounts_id",
+          foreignField: "accounts_id",
+          as: "fundsTransfer"
         }
       }
     ]).toArray();
@@ -360,13 +367,16 @@ router.post('/transactions', async (req, res) => {
   const requestDb = req.app.locals.db.collection('transactions');
 
   try {
+    const account = new ObjectID();
+    const date = new Date();
+      const currentDate = date.toString();
     const body = {
       "accounts_id": req.body.accounts_id,
       "transaction": req.body.transaction,
       "transaction_amount": req.body.transaction_amount,
-      "transaction_date": new Date(),
+      "transaction_date": currentDate,
       "transaction_charge": req.body.transaction_charge,
-      "transaction_id": new ObjectID(),
+      "transaction_id": account.toHexString(),
       "transaction_status": "pending"
     }
     const deposit = await requestDb.insertOne(body);
@@ -375,6 +385,64 @@ router.post('/transactions', async (req, res) => {
   } catch (error) {
     res.status(400).send({ 'error': error })
   }
+})
+
+
+router.get('/fundstransfer', async (req, res, next) => {
+  const empdb = req.app.locals.db.collection('fundsTransfer');
+  try {
+    
+    const response = await empdb.find().toArray();
+    if (result === undefined || result.length === 0) {
+      res.status(500).send({ 'error': 'No Funds transfere in database' })
+    } else {
+      res.status(200).send(response);
+    }
+  
+  } catch (error) {
+    res.status(200).send(error);
+  }
+})
+
+router.post('/fundstransfer', async (req, res) => {
+  const requestDb = req.app.locals.db.collection('fundsTransfer');
+
+  try {
+    const account = new ObjectID();
+    const date = new Date();
+    const currentDate = date.toString();
+    const body = {
+      "accounts_id": req.body.accounts_id,
+      "transfer_amount": +req.body.transfere_ammount,
+      "transfer_date": currentDate,
+      "to_account": req.body.to_account,
+      "from_account": req.body.from_account,
+      "fundTransfere_status": 'pending',
+      "fundTransfere_id": account.toHexString(),
+    }
+    const deposit = await requestDb.insertOne(body);
+    res.status(200).send({ message: "fixed deposit created successfully" })
+
+  } catch (error) {
+    res.status(400).send({ 'error': error })
+  }
+})
+
+
+
+router.get('/customer/:accountid/fundstransfer', function (req, res) {
+
+  req.app.locals.db.collection('fundsTransfer').find({ accounts_id: req.params.accountid }).toArray((err, result) => {
+
+    if (err) {
+      res.status(400).send({ 'error': err })
+    }
+    if (result === undefined || result.length === 0) {
+      res.status(400).send({ 'error': 'No data in database' })
+    } else {
+      res.status(200).send(result)
+    }
+  })
 })
 
 router.get('/search-engine', async (req, res, next) => {
