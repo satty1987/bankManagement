@@ -8,7 +8,7 @@ const auth = {
 }
 const morgan = require('morgan');
 const dbName = 'ds137801.mlab.com:37801/bankmanagement'
-const url = `mongodb://${auth.MONGO_INITDB_ROOT_USERNAME}:${auth.MONGO_INITDB_ROOT_PASSWORD}@${dbName}`
+//const url = `mongodb://${auth.MONGO_INITDB_ROOT_USERNAME}:${auth.MONGO_INITDB_ROOT_PASSWORD}@${dbName}`
 const options = {
   useNewUrlParser: true, 
   reconnectTries: 60, 
@@ -38,18 +38,22 @@ app.use((req, res) => {
   res.status(404).send({ message: 'Route'+req.url+' Not found.' });
 })
 
-MongoClient.connect(url, options, (err, database) => {
-  if (err) {
-    console.log(`FATAL MONGODB CONNECTION ERROR: ${err}:${err.stack}`)
-    process.exit(1)
-  }
-  app.locals.db = database.db('bankmanagement')
-  http.listen(port, () => {
-    console.log("Listening on port " + port)
-    app.emit('APP_STARTED')
-  })
-})
+// MongoClient.connect(url, options, (err, database) => {
+//   if (err) {
+//     console.log(`FATAL MONGODB CONNECTION ERROR: ${err}:${err.stack}`)
+//     process.exit(1)
+//   }
+//   app.locals.db = database.db('bankmanagement')
+//   http.listen(port, () => {
+//     console.log("Listening on port " + port)
+//     app.emit('APP_STARTED')
+//   })
+// })
 
+ http.listen(port, () => {
+    console.log("Listening on port " + port)
+   // app.emit('APP_STARTED')
+  })
 
 // const https = require('https');
 // const jsonURL = "https://raw.githubusercontent.com/satty1987/ng-graphql/master/db1.json";
