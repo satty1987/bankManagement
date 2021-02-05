@@ -32,6 +32,10 @@
         </div>
     </div>
     <script>
+        const hash =  window.location.hash.replace("#",'');
+        if(hash){
+        document.getElementById("reciept").value = hash;
+        }
         const classes = {
             'ResponseToUSCISRequestForEvidenceWasReceived' : ' bg-primary text-white',
             'RequestforAdditionalEvidenceWasSent':'bg-warning',
